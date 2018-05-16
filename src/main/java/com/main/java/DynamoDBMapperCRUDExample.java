@@ -4,47 +4,49 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBAttribute;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBRangeKey;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 
 public class DynamoDBMapperCRUDExample {
 
-    static AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard().build();
+    static AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard().withRegion(Regions.AP_SOUTH_1).build();
 
     public static void main(String[] args) throws IOException {
         testCRUDOperations();
         System.out.println("Example complete!");
     }
 
-    @DynamoDBTable(tableName = "ProductCatalog")
-    public static class CatalogItem {
+    @DynamoDBTable(tableName = "Furniture")
+    public static class Furniture {
         private Integer id;
-        private String title;
-        private String ISBN;
+        private String name;
+        
+        @DynamoDBRangeKey(attributeName = "name")
+        public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		private String ISBN;
         private Set<String> bookAuthors;
 
         // Partition key
-        @DynamoDBHashKey(attributeName = "Id")
+        @DynamoDBHashKey(attributeName = "id")
         public Integer getId() {
             return id;
         }
 
         public void setId(Integer id) {
             this.id = id;
-        }
-
-        @DynamoDBAttribute(attributeName = "Title")
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
         }
 
         @DynamoDBAttribute(attributeName = "ISBN")
@@ -67,24 +69,24 @@ public class DynamoDBMapperCRUDExample {
 
         @Override
         public String toString() {
-            return "Book [ISBN=" + ISBN + ", bookAuthors=" + bookAuthors + ", id=" + id + ", title=" + title + "]";
+            return "Book [ISBN=" + ISBN + ", bookAuthors=" + bookAuthors + ", id=" + id + ", title=" + name + "]";
         }
     }
 
     private static void testCRUDOperations() {
 
-        CatalogItem item = new CatalogItem();
+        Furniture item = new Furniture();
         item.setId(601);
-        item.setTitle("Book 601");
-        item.setISBN("611-1111111111");
-        item.setBookAuthors(new HashSet<String>(Arrays.asList("Author1", "Author2")));
+        item.setName("Book 601");
+        item.setISBN("611-1111111112");
+        item.setBookAuthors(new HashSet<String>(Arrays.asList("Author3", "Author4")));
 
         // Save the item (book).
         DynamoDBMapper mapper = new DynamoDBMapper(client);
         mapper.save(item);
 
         // Retrieve the item.
-        CatalogItem itemRetrieved = mapper.load(CatalogItem.class, 601);
+        Furniture itemRetrieved = mapper.load(Furniture.class, 601, "Book 601");
         System.out.println("Item retrieved:");
         System.out.println(itemRetrieved);
 
@@ -96,8 +98,8 @@ public class DynamoDBMapperCRUDExample {
         System.out.println(itemRetrieved);
 
         // Retrieve the updated item.
-        DynamoDBMapperConfig config = new DynamoDBMapperConfig(DynamoDBMapperConfig.ConsistentReads.CONSISTENT);
-        CatalogItem updatedItem = mapper.load(CatalogItem.class, 601, config);
+        //DynamoDBMapperConfig config = new DynamoDBMapperConfig(DynamoDBMapperConfig.ConsistentReads.CONSISTENT);
+        Furniture updatedItem = mapper.load(Furniture.class, 601, "Book 601");
         System.out.println("Retrieved the previously updated item:");
         System.out.println(updatedItem);
 
@@ -105,7 +107,7 @@ public class DynamoDBMapperCRUDExample {
         mapper.delete(updatedItem);
 
         // Try to retrieve deleted item.
-        CatalogItem deletedItem = mapper.load(CatalogItem.class, updatedItem.getId(), config);
+        Furniture deletedItem = mapper.load(Furniture.class, updatedItem.getId(), "Book 601");
         if (deletedItem == null) {
             System.out.println("Done - Sample item is deleted.");
         }
